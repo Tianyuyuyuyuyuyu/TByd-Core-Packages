@@ -2,7 +2,6 @@
 #
 # Get latest from https://github.com/github/gitignore/blob/main/Unity.gitignore
 #
-.utmp/
 /[Ll]ibrary/
 /[Tt]emp/
 /[Oo]bj/
@@ -57,11 +56,10 @@ ExportedObj/
 sysinfo.txt
 
 # Builds
-*.apk
-*.aab
-*.unitypackage
-*.unitypackage.meta
-*.app
+//*.apk
+//*.aab
+//*.unitypackage
+//*.app
 
 # Crashlytics generated file
 crashlytics-build.properties
@@ -72,3 +70,13 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# npm配置文件 - 包含敏感认证信息
+.npmrc
+.npmrc.user
+npm-debug.log
+npm-debug.log.*
+
+# npm包文件
+node_modules/
+package-lock.json
