@@ -337,5 +337,21 @@ namespace TByd.Core.Utils.Runtime.Extensions
             
             return null;
         }
+        
+        /// <summary>
+        /// 设置变换的世界位置
+        /// </summary>
+        /// <param name="transform">要修改的Transform</param>
+        /// <param name="position">新的世界位置</param>
+        /// <returns>修改后的Transform引用，用于链式调用</returns>
+        /// <remarks>
+        /// 此方法设置Transform的世界位置。
+        /// </remarks>
+        [System.Obsolete("此方法将在1.0.0版本中移除，请直接使用transform.position = value替代", false)]
+        public static Transform SetPosition(this Transform transform, Vector3 position)
+        {
+            transform.position = position;
+            return transform;
+        }
     }
 } 

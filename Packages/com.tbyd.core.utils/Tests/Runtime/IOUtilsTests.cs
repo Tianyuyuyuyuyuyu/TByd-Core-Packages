@@ -644,7 +644,7 @@ namespace TByd.Core.Utils.Tests
             // 启动监控
             string watcherId = IOUtils.StartWatching(
                 watchFile,
-                onChange: (path, changeType) => { changeDetected = true; }
+                onChange: (e) => { changeDetected = true; }
             );
             
             // 等待文件系统监控器初始化

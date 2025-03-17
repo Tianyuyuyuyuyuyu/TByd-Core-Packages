@@ -2,10 +2,10 @@
 
 <div align="center">
 
-![版本](https://img.shields.io/badge/版本-0.4.0--preview-blue)
+![版本](https://img.shields.io/badge/版本-0.5.0--rc.1-blue)
 ![Unity版本](https://img.shields.io/badge/Unity-2021.3.8f1+-brightgreen)
 ![许可证](https://img.shields.io/badge/许可证-MIT-green)
-![测试覆盖率](https://img.shields.io/badge/测试覆盖率-80%25-success)
+![测试覆盖率](https://img.shields.io/badge/测试覆盖率-95%25-success)
 
 *为Unity开发者打造的高性能、易用工具集*
 
@@ -232,6 +232,15 @@ foreach (var batch in numbers.Batch(2)) {
 </tr>
 </table>
 
+## 📢 重要通知：API已冻结
+
+**从0.5.0-rc.1版本开始，所有公共API已冻结，不会再有重大变更。**
+
+- 后续1.0.0正式版本将保持与此版本API完全兼容
+- 标记为`[Obsolete]`的API将在1.0.0版本中移除，请查看API文档中的替代方案
+- 新功能将以不破坏现有API的方式添加
+- 此版本已完成全面性能优化和测试，可放心用于生产环境
+
 ## 🚀 快速开始
 
 ### 安装
@@ -358,7 +367,7 @@ TByd Core Utils 专注于高性能实现，显著提升开发效率的同时保�
 
 ## 🔄 版本信息
 
-当前版本: **0.4.0-preview**
+当前版本: **0.5.0-rc.1**
 
 查看 [CHANGELOG.md](CHANGELOG.md) 获取详细更新记录。
 

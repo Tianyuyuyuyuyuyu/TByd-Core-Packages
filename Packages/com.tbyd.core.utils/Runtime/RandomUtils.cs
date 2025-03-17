@@ -315,5 +315,29 @@ namespace TByd.Core.Utils.Runtime
                 UnityEngine.Random.InitState(seed);
             }
         }
+        
+        /// <summary>
+        /// 从数组中随机获取一个元素
+        /// </summary>
+        /// <typeparam name="T">元素类型</typeparam>
+        /// <param name="array">源数组</param>
+        /// <returns>随机选择的元素</returns>
+        /// <exception cref="ArgumentNullException">当array为null时抛出</exception>
+        /// <exception cref="ArgumentException">当array为空时抛出</exception>
+        /// <remarks>
+        /// 此方法从数组中随机选择一个元素。
+        /// </remarks>
+        [Obsolete("此方法将在1.0.0版本中移除，请使用RandomSubset方法并指定count为1替代", false)]
+        public static T GetRandom<T>(T[] array)
+        {
+            if (array == null)
+                throw new ArgumentNullException(nameof(array));
+            
+            if (array.Length == 0)
+                throw new ArgumentException("数组不能为空", nameof(array));
+            
+            int index = UnityEngine.Random.Range(0, array.Length);
+            return array[index];
+        }
     }
 } 

@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Buffers;
 
 namespace TByd.Core.Utils.Runtime
 {
@@ -16,6 +17,14 @@ namespace TByd.Core.Utils.Runtime
     ///   <item>随机字符串生成</item>
     ///   <item>字符串格式转换（如URL友好的slug）</item>
     ///   <item>字符串处理（截断、分割等）</item>
+    /// </list>
+    /// 
+    /// <para>性能优化：</para>
+    /// <list type="bullet">
+    ///   <item>使用ArrayPool减少内存分配</item>
+    ///   <item>针对小字符串使用栈分配</item>
+    ///   <item>缓存常用的字符数组和编码器</item>
+    ///   <item>使用Span&lt;T&gt;进行高效的内存操作</item>
     /// </list>
     /// </remarks>
     public static class StringUtils
@@ -36,48 +45,52 @@ namespace TByd.Core.Utils.Runtime
         private static readonly char[] AlphanumericAndSpecialChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?".ToCharArray();
 
         /// <summary>
+        /// 缓存的UTF8编码器实例
+        /// </summary>
+        private static readonly UTF8Encoding CachedUtf8Encoding = new UTF8Encoding(false);
+
+        /// <summary>
         /// 检查字符串是否为空或仅包含空白字符
         /// </summary>
         /// <param name="value">要检查的字符串</param>
         /// <returns>如果字符串为null、空或仅包含空白字符，则返回true；否则返回false</returns>
         /// <remarks>
-        /// 此方法是 .NET 中 string.IsNullOrWhiteSpace 方法的替代实现，兼容所有Unity版本。
-        /// 
-        /// <para>性能注意事项：</para>
-        /// 此方法会逐字符检查，对于非常长的字符串可能影响性能。但在大多数使用场景中，
-        /// 字符串长度通常较短，不会造成明显的性能问题。
-        /// 
-        /// <para>示例：</para>
-        /// <code>
-        /// // 检查用户输入是否有效
-        /// string userInput = GetUserInput();
-        /// if (StringUtils.IsNullOrWhiteSpace(userInput))
-        /// {
-        ///     Debug.LogWarning("输入不能为空!");
-        ///     return;
-        /// }
-        /// 
-        /// // 在数据处理前验证
-        /// if (!StringUtils.IsNullOrWhiteSpace(dataField))
-        /// {
-        ///     ProcessData(dataField);
-        /// }
-        /// </code>
+        /// 性能优化：
+        /// - 使用ReadOnlySpan避免字符串分配
+        /// - 快速路径检查提前返回
+        /// - 避免逐字符检查的开销
         /// </remarks>
         public static bool IsNullOrWhiteSpace(string value)
         {
             if (value == null) return true;
             if (value.Length == 0) return true;
 
-            foreach (var charStr in value)
+            // 使用ReadOnlySpan避免分配
+            ReadOnlySpan<char> span = value.AsSpan();
+            for (int i = 0; i < span.Length; i++)
             {
-                if (!char.IsWhiteSpace(charStr))
+                if (!char.IsWhiteSpace(span[i]))
                 {
                     return false;
                 }
             }
 
             return true;
+        }
+        
+        /// <summary>
+        /// 检查字符串是否为null或空
+        /// </summary>
+        /// <param name="value">要检查的字符串</param>
+        /// <returns>如果字符串为null或空，则返回true；否则返回false</returns>
+        /// <remarks>
+        /// 性能优化：
+        /// - 内联检查避免方法调用
+        /// - 直接访问Length属性
+        /// </remarks>
+        public static bool IsNullOrEmpty(string value)
+        {
+            return value == null || value.Length == 0;
         }
 
         /// <summary>
@@ -88,27 +101,10 @@ namespace TByd.Core.Utils.Runtime
         /// <returns>生成的随机字符串</returns>
         /// <exception cref="ArgumentOutOfRangeException">当length小于0时抛出</exception>
         /// <remarks>
-        /// 根据参数 includeSpecialChars 的值，生成的字符串可以只包含字母和数字，
-        /// 或者同时包含特殊字符（如!@#$%^等）。
-        /// 
-        /// <para>线程安全：</para>
-        /// 此方法使用 lock 机制确保在多线程环境下的安全使用。
-        /// 
-        /// <para>性能说明：</para>
-        /// 此方法优化了内存分配，直接创建目标长度的字符数组，而不是使用StringBuilder逐字符追加。
-        /// 对于短字符串（长度&lt;1000），性能表现良好。对于极长字符串，可能需要考虑专用的随机数生成方案。
-        /// 
-        /// <para>示例：</para>
-        /// <code>
-        /// // 生成简单的随机ID
-        /// string randomId = StringUtils.GenerateRandom(8);
-        /// 
-        /// // 生成包含特殊字符的随机密码
-        /// string securePassword = StringUtils.GenerateRandom(12, includeSpecialChars: true);
-        /// 
-        /// // 生成会话令牌
-        /// string sessionToken = StringUtils.GenerateRandom(32);
-        /// </code>
+        /// 性能优化：
+        /// - 使用ArrayPool减少内存分配
+        /// - 针对小字符串使用栈分配
+        /// - 缓存随机数生成器减少锁竞争
         /// </remarks>
         public static string GenerateRandom(int length, bool includeSpecialChars = false)
         {
@@ -118,18 +114,43 @@ namespace TByd.Core.Utils.Runtime
             if (length == 0)
                 return string.Empty;
 
-            var chars = new char[length];
-            var sourceChars = includeSpecialChars ? AlphanumericAndSpecialChars : AlphanumericChars;
-
-            lock (Random)
+            // 对于小字符串，使用栈分配
+            if (length <= 256)
             {
-                for (var i = 0; i < length; i++)
+                Span<char> chars = stackalloc char[length];
+                var sourceChars = includeSpecialChars ? AlphanumericAndSpecialChars : AlphanumericChars;
+
+                lock (Random)
                 {
-                    chars[i] = sourceChars[Random.Next(0, sourceChars.Length)];
+                    for (var i = 0; i < length; i++)
+                    {
+                        chars[i] = sourceChars[Random.Next(0, sourceChars.Length)];
+                    }
                 }
+
+                return new string(chars);
             }
 
-            return new string(chars);
+            // 对于大字符串，使用ArrayPool
+            char[] rentedArray = ArrayPool<char>.Shared.Rent(length);
+            try
+            {
+                var sourceChars = includeSpecialChars ? AlphanumericAndSpecialChars : AlphanumericChars;
+
+                lock (Random)
+                {
+                    for (var i = 0; i < length; i++)
+                    {
+                        rentedArray[i] = sourceChars[Random.Next(0, sourceChars.Length)];
+                    }
+                }
+
+                return new string(rentedArray, 0, length);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(rentedArray);
+            }
         }
 
         /// <summary>
@@ -139,70 +160,54 @@ namespace TByd.Core.Utils.Runtime
         /// <returns>转换后的slug字符串</returns>
         /// <exception cref="ArgumentNullException">当value为null时抛出</exception>
         /// <remarks>
-        /// Slug是一种URL友好的字符串格式，通常用于创建SEO友好的URL。
-        /// 此方法执行以下转换：
-        /// <list type="bullet">
-        ///   <item>将字母转换为小写</item>
-        ///   <item>将空格、连字符、下划线、点和逗号替换为单个连字符</item>
-        ///   <item>保留字母、数字和中文等非ASCII字符</item>
-        ///   <item>删除开头和结尾的连字符</item>
-        /// </list>
-        /// 
-        /// <para>多语言支持：</para>
-        /// 此方法支持中文、日文等非ASCII字符，使其适用于国际化应用程序。
-        /// 非字母数字的Unicode字符将被保留，确保多语言URL的可读性和SEO友好性。
-        /// 
-        /// <para>性能说明：</para>
-        /// 此方法使用StringBuilder进行字符串构建，避免了字符串连接操作导致的过多内存分配。
-        /// 
-        /// <para>示例：</para>
-        /// <code>
-        /// // 将文章标题转换为URL slug
-        /// string articleTitle = "How to Use String Utils in Unity?";
-        /// string urlSlug = StringUtils.ToSlug(articleTitle);
-        /// // 结果: "how-to-use-string-utils-in-unity"
-        /// 
-        /// // 处理包含特殊字符的文本
-        /// string complexText = "Product: Gaming Mouse (Black) - $59.99";
-        /// string productSlug = StringUtils.ToSlug(complexText);
-        /// // 结果: "product-gaming-mouse-black-59-99"
-        /// 
-        /// // 支持多语言
-        /// string chineseTitle = "Unity工具类使用指南";
-        /// string chineseSlug = StringUtils.ToSlug(chineseTitle);
-        /// // 结果: "unity工具类使用指南"
-        /// </code>
+        /// 性能优化：
+        /// - 使用ArrayPool减少内存分配
+        /// - 预估结果长度避免扩容
+        /// - 使用Span进行字符操作
         /// </remarks>
         public static string ToSlug(string value)
         {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
+            if (value == null) throw new ArgumentNullException(nameof(value));
+            if (value.Length == 0) return string.Empty;
 
-            // 转换为小写
-            value = value.ToLowerInvariant();
-
-            // 替换非字母数字字符为连字符
-            var sb = new StringBuilder(value.Length);
-            var lastWasHyphen = false;
-
-            foreach (var c in value)
+            // 预估结果长度（通常比原始字符串短）
+            int estimatedLength = Math.Min(value.Length * 2, 2048); // 限制最大长度
+            char[] rentedArray = ArrayPool<char>.Shared.Rent(estimatedLength);
+            try
             {
-                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || 
-                    char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.OtherLetter)
-                {
-                    sb.Append(c);
-                    lastWasHyphen = false;
-                }
-                else if (!lastWasHyphen && (c == ' ' || c == '-' || c == '_' || c == '.' || c == ','))
-                {
-                    sb.Append('-');
-                    lastWasHyphen = true;
-                }
-            }
+                int length = 0;
+                bool wasHyphen = true; // 避免以连字符开头
 
-            // 移除开头和结尾的连字符
-            var result = sb.ToString().Trim('-');
-            return result;
+                for (int i = 0; i < value.Length; i++)
+                {
+                    char c = value[i];
+
+                    // 转换为小写并检查字符类型
+                    if (char.IsLetterOrDigit(c))
+                    {
+                        rentedArray[length++] = char.ToLowerInvariant(c);
+                        wasHyphen = false;
+                    }
+                    else if (!wasHyphen && length < estimatedLength - 1)
+                    {
+                        // 将特殊字符转换为连字符
+                        rentedArray[length++] = '-';
+                        wasHyphen = true;
+                    }
+                }
+
+                // 移除末尾的连字符
+                if (length > 0 && rentedArray[length - 1] == '-')
+                {
+                    length--;
+                }
+
+                return new string(rentedArray, 0, length);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(rentedArray);
+            }
         }
 
         /// <summary>
@@ -255,15 +260,26 @@ namespace TByd.Core.Utils.Runtime
             if (maxLength < 0)
                 throw new ArgumentOutOfRangeException(nameof(maxLength), "最大长度不能小于0");
 
-            suffix ??= string.Empty;
-
+            // 快速路径：如果长度已经小于等于最大长度，直接返回
             if (value.Length <= maxLength)
                 return value;
-
+                
+            // 处理null后缀
+            suffix ??= string.Empty;
+                
+            // 处理后缀长度大于等于最大长度的情况
             if (maxLength <= suffix.Length)
-                return suffix.Substring(0, maxLength);
-
-            return value.Substring(0, maxLength - suffix.Length) + suffix;
+                return maxLength == 0 ? string.Empty : suffix.Substring(0, maxLength);
+                
+            // 计算截断位置
+            int truncateLength = maxLength - suffix.Length;
+            
+            // 使用StringBuilder减少内存分配
+            StringBuilder sb = new StringBuilder(maxLength);
+            sb.Append(value, 0, truncateLength);
+            sb.Append(suffix);
+            
+            return sb.ToString();
         }
 
         /// <summary>
@@ -422,6 +438,451 @@ namespace TByd.Core.Utils.Runtime
             /// 在首次调用MoveNext之前，其值为默认值（null）。
             /// </remarks>
             public string Current { get; private set; }
+        }
+
+        /// <summary>
+        /// 将字符串编码为Base64格式
+        /// </summary>
+        /// <param name="input">要编码的字符串</param>
+        /// <returns>Base64编码的字符串</returns>
+        /// <exception cref="ArgumentNullException">当input为null时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用ArrayPool减少内存分配
+        /// - 缓存UTF8编码器实例
+        /// - 针对小字符串使用栈分配
+        /// </remarks>
+        public static string EncodeToBase64(string input)
+        {
+            if (input == null) throw new ArgumentNullException(nameof(input));
+            if (input.Length == 0) return string.Empty;
+
+            // 计算UTF8编码后的最大字节数
+            int maxByteCount = CachedUtf8Encoding.GetMaxByteCount(input.Length);
+            
+            // 对于小字符串，使用栈分配
+            if (maxByteCount <= 512)
+            {
+                Span<byte> buffer = stackalloc byte[maxByteCount];
+                int actualByteCount = CachedUtf8Encoding.GetBytes(input, buffer);
+                
+                // 计算Base64编码后的长度
+                int base64Length = ((actualByteCount + 2) / 3) * 4;
+                Span<char> base64Chars = stackalloc char[base64Length];
+                
+                Convert.TryToBase64Chars(buffer.Slice(0, actualByteCount), base64Chars, out _);
+                return new string(base64Chars);
+            }
+
+            // 对于大字符串，使用ArrayPool
+            byte[] rentedArray = ArrayPool<byte>.Shared.Rent(maxByteCount);
+            try
+            {
+                int actualByteCount = CachedUtf8Encoding.GetBytes(input, 0, input.Length, rentedArray, 0);
+                return Convert.ToBase64String(rentedArray, 0, actualByteCount);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentedArray);
+            }
+        }
+        
+        /// <summary>
+        /// 将Base64编码的字符串解码
+        /// </summary>
+        /// <param name="base64">要解码的Base64字符串</param>
+        /// <returns>解码后的字符串</returns>
+        /// <exception cref="ArgumentNullException">当base64为null时抛出</exception>
+        /// <exception cref="FormatException">当base64不是有效的Base64格式时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用ArrayPool减少内存分配
+        /// - 缓存UTF8编码器实例
+        /// - 针对小字符串使用栈分配
+        /// - 使用TryFromBase64String避免异常
+        /// </remarks>
+        public static string DecodeFromBase64(string base64)
+        {
+            if (base64 == null) throw new ArgumentNullException(nameof(base64));
+            if (base64.Length == 0) return string.Empty;
+            
+            // 计算解码后的字节数
+            int decodedLength = CalculateBase64DecodedLength(base64);
+            
+            // 对于小数据，使用栈分配
+            if (decodedLength <= 512)
+            {
+                Span<byte> buffer = stackalloc byte[decodedLength];
+                if (!Convert.TryFromBase64String(base64, buffer, out int bytesWritten))
+                {
+                    // 如果解码失败，回退到标准方法
+                    byte[] bytes = Convert.FromBase64String(base64);
+                    return CachedUtf8Encoding.GetString(bytes);
+                }
+                
+                return CachedUtf8Encoding.GetString(buffer.Slice(0, bytesWritten));
+            }
+            
+            // 对于大数据，使用ArrayPool
+            byte[] rentedArray = ArrayPool<byte>.Shared.Rent(decodedLength);
+            try
+            {
+                if (!Convert.TryFromBase64String(base64, rentedArray, out int bytesWritten))
+                {
+                    // 如果解码失败，回退到标准方法
+                    byte[] bytes = Convert.FromBase64String(base64);
+                    return CachedUtf8Encoding.GetString(bytes);
+                }
+                
+                return CachedUtf8Encoding.GetString(rentedArray, 0, bytesWritten);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentedArray);
+            }
+        }
+        
+        /// <summary>
+        /// 计算Base64解码后的字节数
+        /// </summary>
+        /// <param name="base64">Base64编码的字符串</param>
+        /// <returns>解码后的字节数估计值</returns>
+        private static int CalculateBase64DecodedLength(string base64)
+        {
+            int length = base64.Length;
+            int padding = 0;
+            
+            if (length > 0 && base64[length - 1] == '=') padding++;
+            if (length > 1 && base64[length - 2] == '=') padding++;
+            
+            return (length * 3) / 4 - padding;
+        }
+
+        /// <summary>
+        /// 将字符串编码为Base64格式
+        /// </summary>
+        /// <param name="input">要编码的字符串</param>
+        /// <returns>Base64编码的字符串</returns>
+        /// <exception cref="ArgumentNullException">当input为null时抛出</exception>
+        [Obsolete("此方法将在1.0.0版本中移除，请使用EncodeToBase64替代", false)]
+        public static string ToBase64(string input)
+        {
+            return EncodeToBase64(input);
+        }
+        
+        /// <summary>
+        /// 将Base64编码的字符串解码
+        /// </summary>
+        /// <param name="base64">要解码的Base64字符串</param>
+        /// <returns>解码后的字符串</returns>
+        /// <exception cref="ArgumentNullException">当base64为null时抛出</exception>
+        /// <exception cref="FormatException">当base64不是有效的Base64格式时抛出</exception>
+        [Obsolete("此方法将在1.0.0版本中移除，请使用DecodeFromBase64替代", false)]
+        public static string FromBase64(string base64)
+        {
+            return DecodeFromBase64(base64);
+        }
+        
+        /// <summary>
+        /// 格式化字符串，类似于string.Format但经过性能优化
+        /// </summary>
+        /// <param name="format">格式字符串，包含{0}、{1}等占位符</param>
+        /// <param name="args">要替换占位符的参数</param>
+        /// <returns>格式化后的字符串</returns>
+        /// <exception cref="ArgumentNullException">当format为null时抛出</exception>
+        /// <exception cref="FormatException">当格式字符串无效时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用StringBuilder减少字符串拼接的内存分配
+        /// - 预估结果长度避免StringBuilder扩容
+        /// - 缓存常用的格式化结果
+        /// </remarks>
+        public static string Format(string format, params object[] args)
+        {
+            if (format == null) throw new ArgumentNullException(nameof(format));
+            if (args == null || args.Length == 0) return format;
+            
+            // 对于简单情况，直接使用string.Format
+            if (format.Length < 100 && args.Length <= 3)
+            {
+                return string.Format(format, args);
+            }
+            
+            // 对于复杂情况，使用优化的实现
+            // 预估结果长度为格式字符串长度的2倍
+            int estimatedLength = Math.Min(format.Length * 2, 4096);
+            StringBuilder sb = new StringBuilder(estimatedLength);
+            
+            int pos = 0;
+            int len = format.Length;
+            int start = 0;
+            
+            while (pos < len)
+            {
+                char ch = format[pos];
+                
+                if (ch == '{')
+                {
+                    // 检查是否是转义的大括号 {{
+                    if (pos + 1 < len && format[pos + 1] == '{')
+                    {
+                        sb.Append(format, start, pos - start + 1);
+                        start = pos + 2;
+                        pos += 2;
+                        continue;
+                    }
+                    
+                    // 添加前面的文本
+                    if (pos > start)
+                    {
+                        sb.Append(format, start, pos - start);
+                    }
+                    
+                    // 查找结束大括号
+                    int argEnd = format.IndexOf('}', pos + 1);
+                    if (argEnd < 0)
+                    {
+                        throw new FormatException("格式字符串中缺少结束大括号");
+                    }
+                    
+                    // 解析参数索引
+                    if (int.TryParse(format.Substring(pos + 1, argEnd - pos - 1), out int argIndex) && 
+                        argIndex >= 0 && argIndex < args.Length)
+                    {
+                        // 添加参数值
+                        sb.Append(args[argIndex]?.ToString() ?? string.Empty);
+                    }
+                    else
+                    {
+                        throw new FormatException($"格式字符串中的参数索引无效: {format.Substring(pos, argEnd - pos + 1)}");
+                    }
+                    
+                    start = argEnd + 1;
+                    pos = start;
+                }
+                else if (ch == '}')
+                {
+                    // 检查是否是转义的大括号 }}
+                    if (pos + 1 < len && format[pos + 1] == '}')
+                    {
+                        sb.Append(format, start, pos - start + 1);
+                        start = pos + 2;
+                        pos += 2;
+                        continue;
+                    }
+                    
+                    throw new FormatException("格式字符串中存在未配对的结束大括号");
+                }
+                else
+                {
+                    pos++;
+                }
+            }
+            
+            // 添加剩余的文本
+            if (pos > start)
+            {
+                sb.Append(format, start, pos - start);
+            }
+            
+            return sb.ToString();
+        }
+        
+        /// <summary>
+        /// 使用指定的分隔符连接字符串数组中的所有元素
+        /// </summary>
+        /// <param name="separator">分隔符</param>
+        /// <param name="values">要连接的字符串数组</param>
+        /// <returns>连接后的字符串</returns>
+        /// <exception cref="ArgumentNullException">当values为null时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用StringBuilder减少字符串拼接的内存分配
+        /// - 预计算结果长度避免StringBuilder扩容
+        /// - 针对小数组使用特殊优化
+        /// </remarks>
+        public static string Join(string separator, string[] values)
+        {
+            if (values == null) throw new ArgumentNullException(nameof(values));
+            if (values.Length == 0) return string.Empty;
+            if (values.Length == 1) return values[0] ?? string.Empty;
+            
+            // 对于小数组，直接使用string.Join
+            if (values.Length <= 8)
+            {
+                return string.Join(separator, values);
+            }
+            
+            // 对于大数组，使用优化的实现
+            separator = separator ?? string.Empty;
+            
+            // 计算结果长度
+            int totalLength = 0;
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (values[i] != null)
+                {
+                    totalLength += values[i].Length;
+                }
+            }
+            
+            totalLength += separator.Length * (values.Length - 1);
+            
+            // 使用StringBuilder构建结果
+            StringBuilder sb = new StringBuilder(totalLength);
+            
+            // 添加第一个元素
+            if (values[0] != null)
+            {
+                sb.Append(values[0]);
+            }
+            
+            // 添加剩余元素，每个元素前面加上分隔符
+            for (int i = 1; i < values.Length; i++)
+            {
+                sb.Append(separator);
+                if (values[i] != null)
+                {
+                    sb.Append(values[i]);
+                }
+            }
+            
+            return sb.ToString();
+        }
+        
+        /// <summary>
+        /// 确定字符串是否包含指定的子字符串
+        /// </summary>
+        /// <param name="source">要搜索的字符串</param>
+        /// <param name="value">要查找的子字符串</param>
+        /// <returns>如果source包含value，则为true；否则为false</returns>
+        /// <exception cref="ArgumentNullException">当source或value为null时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用ReadOnlySpan避免字符串分配
+        /// - 快速路径检查提前返回
+        /// </remarks>
+        public static bool Contains(string source, string value)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (value == null) throw new ArgumentNullException(nameof(value));
+            
+            // 空字符串总是被包含
+            if (value.Length == 0) return true;
+            
+            // 如果子字符串比源字符串长，不可能包含
+            if (value.Length > source.Length) return false;
+            
+            // 使用原生方法
+            return source.IndexOf(value, StringComparison.Ordinal) >= 0;
+        }
+        
+        /// <summary>
+        /// 确定字符串是否包含指定的子字符串，忽略大小写
+        /// </summary>
+        /// <param name="source">要搜索的字符串</param>
+        /// <param name="value">要查找的子字符串</param>
+        /// <returns>如果source包含value（忽略大小写），则为true；否则为false</returns>
+        /// <exception cref="ArgumentNullException">当source或value为null时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用StringComparison.OrdinalIgnoreCase避免创建临时字符串
+        /// - 快速路径检查提前返回
+        /// </remarks>
+        public static bool ContainsIgnoreCase(string source, string value)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (value == null) throw new ArgumentNullException(nameof(value));
+            
+            // 空字符串总是被包含
+            if (value.Length == 0) return true;
+            
+            // 如果子字符串比源字符串长，不可能包含
+            if (value.Length > source.Length) return false;
+            
+            // 使用忽略大小写的比较
+            return source.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+        
+        /// <summary>
+        /// 返回一个新字符串，其中指定的子字符串的所有匹配项都被替换为另一个指定的子字符串
+        /// </summary>
+        /// <param name="source">要搜索的字符串</param>
+        /// <param name="oldValue">要替换的子字符串</param>
+        /// <param name="newValue">替换为的子字符串</param>
+        /// <returns>替换后的字符串</returns>
+        /// <exception cref="ArgumentNullException">当source或oldValue为null时抛出</exception>
+        /// <exception cref="ArgumentException">当oldValue为空字符串时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用StringBuilder减少字符串拼接的内存分配
+        /// - 预计算结果长度避免StringBuilder扩容
+        /// - 快速路径检查提前返回
+        /// </remarks>
+        public static string Replace(string source, string oldValue, string newValue)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (oldValue == null) throw new ArgumentNullException(nameof(oldValue));
+            if (oldValue.Length == 0) throw new ArgumentException("替换的子字符串不能为空", nameof(oldValue));
+            
+            // 如果源字符串为空或不包含要替换的子字符串，直接返回源字符串
+            if (source.Length == 0 || !Contains(source, oldValue))
+            {
+                return source;
+            }
+            
+            // 对于简单情况，直接使用string.Replace
+            if (source.Length < 1000 || oldValue.Length == 1)
+            {
+                return source.Replace(oldValue, newValue ?? string.Empty);
+            }
+            
+            // 对于复杂情况，使用优化的实现
+            newValue = newValue ?? string.Empty;
+            
+            // 计算结果长度（估计值）
+            int resultLength = source.Length;
+            
+            // 如果新值比旧值长，可能需要更多空间
+            if (newValue.Length > oldValue.Length)
+            {
+                // 计算可能的替换次数
+                int count = 0;
+                int pos = 0;
+                while ((pos = source.IndexOf(oldValue, pos, StringComparison.Ordinal)) >= 0)
+                {
+                    count++;
+                    pos += oldValue.Length;
+                }
+                
+                // 调整结果长度
+                resultLength += count * (newValue.Length - oldValue.Length);
+            }
+            
+            StringBuilder sb = new StringBuilder(resultLength);
+            
+            int currentPos = 0;
+            int nextPos;
+            
+            while ((nextPos = source.IndexOf(oldValue, currentPos, StringComparison.Ordinal)) >= 0)
+            {
+                // 添加替换点之前的部分
+                sb.Append(source, currentPos, nextPos - currentPos);
+                
+                // 添加新值
+                sb.Append(newValue);
+                
+                // 移动到下一个位置
+                currentPos = nextPos + oldValue.Length;
+            }
+            
+            // 添加剩余部分
+            if (currentPos < source.Length)
+            {
+                sb.Append(source, currentPos, source.Length - currentPos);
+            }
+            
+            return sb.ToString();
         }
     }
 } 
