@@ -2,6 +2,43 @@
 
 本文档记录 `TByd.Core.Utils` 包的所有重要变更。
 
+## [0.4.0-preview] - 2025-03-17
+
+### 新增
+- **CollectionUtils** - 集合操作工具类
+  - 高性能集合操作API
+  - 批量元素处理（BatchProcess、ForEach）
+  - 集合比较与差异计算（Compare、FindDifferences）
+  - 集合转换与映射（Map、ConvertAll）
+  - 分页与分块处理（Paginate、Chunk）
+  - 集合过滤与查询（Filter、FindAll、FindFirst）
+  - 集合排序与排序优化（Sort、StableSort）
+  - 集合统计与聚合（Aggregate、Sum、Average）
+
+- **IOUtils** - IO操作工具类
+  - 文件系统操作（CreateDirectory、DeleteFile、CopyFile）
+  - 文件读写（ReadAllText、WriteAllText、ReadAllBytes）
+  - 路径处理（CombinePaths、GetRelativePath、NormalizePath）
+  - 文件监控（WatchFile、WatchDirectory）
+  - 异步IO操作（ReadAllTextAsync、WriteAllTextAsync）
+  - 文件类型检测（GetMimeType、IsTextFile）
+  - 文件哈希计算（ComputeHash、ComputeMD5）
+
+### 改进
+- 优化了ReflectionUtils的缓存机制，提高反射性能
+- 增强了TimeUtils的时区处理功能，支持更多时区格式
+- 扩展了RandomUtils的随机数生成算法，增加更多分布类型
+- 完善了所有工具类的异常处理和错误报告
+- 提高了代码的可测试性，便于单元测试
+- 减少了内存分配，优化了性能关键路径
+
+### 文档
+- 添加了CollectionUtils和IOUtils的详细API文档
+- 更新了性能优化指南，提供更多实际应用场景
+- 完善了API参考，包含所有新增方法的完整说明
+- 添加了更多代码示例，展示各种使用场景
+- 更新了最佳实践文档，提供更多实用建议
+
 ## [0.3.0-preview] - 2025-03-17
 
 ### 新增

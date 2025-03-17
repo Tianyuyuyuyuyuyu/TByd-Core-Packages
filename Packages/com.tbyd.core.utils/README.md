@@ -2,10 +2,10 @@
 
 <div align="center">
 
-![版本](https://img.shields.io/badge/版本-0.3.0--preview-blue)
+![版本](https://img.shields.io/badge/版本-0.4.0--preview-blue)
 ![Unity版本](https://img.shields.io/badge/Unity-2021.3.8f1+-brightgreen)
 ![许可证](https://img.shields.io/badge/许可证-MIT-green)
-![测试覆盖率](https://img.shields.io/badge/测试覆盖率-95%25-success)
+![测试覆盖率](https://img.shields.io/badge/测试覆盖率-80%25-success)
 
 *为Unity开发者打造的高性能、易用工具集*
 
@@ -13,15 +13,15 @@
 
 ## 📋 概述
 
-TByd Core Utils 是一个专为Unity开发者设计的实用工具库，提供常用的数学工具、字符串处理、随机功能、反射工具、时间工具和各种扩展方法，帮助开发者专注于游戏逻辑实现，减少编写重复代码的工作。
+TByd Core Utils 是一个专为Unity开发者设计的实用工具库，提供常用的数学工具、字符串处理、随机功能、反射工具、时间工具、集合工具、IO操作和各种扩展方法，帮助开发者专注于游戏逻辑实现，减少编写重复代码的工作。
 
 <div align="center">
   
-| 🧮 数学工具 | 📝 字符串工具 | 🎲 随机工具 | ⏱️ 时间工具 | 🔍 反射工具 | 🎮 扩展方法 |
-|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|
-| 平滑曲线插值 | 多语言文本处理 | 权重随机选择 | 时间格式化 | 高性能反射 | 链式变换操作 |
-| 范围值重映射 | 智能字符串生成 | 正态分布随机 | 游戏时间系统 | 动态实例化 | 集合批量处理 |
-| 矢量与旋转转换 | 高效文本解析 | 随机颜色生成 | 计时与测量 | 元数据访问 | 安全组件操作 |
+| 🧮 数学工具 | 📝 字符串工具 | 🎲 随机工具 | ⏱️ 时间工具 | 🔍 反射工具 | 🔢 集合工具 | 💾 IO工具 | 🎮 扩展方法 |
+|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|
+| 平滑曲线插值 | 多语言文本处理 | 权重随机选择 | 时间格式化 | 高性能反射 | 批量数据处理 | 文件系统操作 | 链式变换操作 |
+| 范围值重映射 | 智能字符串生成 | 正态分布随机 | 游戏时间系统 | 动态实例化 | 集合分页排序 | 异步文件读写 | 集合批量处理 |
+| 矢量与旋转转换 | 高效文本解析 | 随机颜色生成 | 计时与测量 | 元数据访问 | 映射与过滤 | 文件监控 | 安全组件操作 |
 
 </div>
 
@@ -158,6 +158,78 @@ foreach (var batch in numbers.Batch(2)) {
 ```
 </td>
 </tr>
+<tr>
+<td width="33%">
+<h3 align="center">🔢 CollectionUtils</h3>
+<p align="center"></p>
+
+```csharp
+// 批量处理大集合
+await CollectionUtils.BatchProcessAsync(
+    largeList, 100, ProcessItem);
+    
+// 对集合进行分页
+var page = CollectionUtils.Paginate(
+    items, pageSize: 10, pageIndex: 2);
+    
+// 过滤和映射操作
+var results = CollectionUtils
+    .Filter(items, x => x.IsActive)
+    .Map(x => x.Name);
+    
+// 比较两个集合
+var differences = CollectionUtils.FindDifferences(
+    oldItems, newItems);
+```
+</td>
+<td width="33%">
+<h3 align="center">💾 IOUtils</h3>
+<p align="center"></p>
+
+```csharp
+// 异步读写文件
+string json = await IOUtils.ReadAllTextAsync(
+    savePath);
+await IOUtils.WriteAllTextAsync(
+    savePath, json);
+    
+// 规范化路径
+string path = IOUtils.NormalizePath(
+    "Assets/../Resources/Data.json");
+    
+// 监控文件变化
+IOUtils.WatchFile(configPath, OnConfigChanged);
+
+// 计算文件哈希
+string hash = IOUtils.ComputeMD5(filePath);
+```
+</td>
+<td width="33%">
+<h3 align="center">🎮 扩展方法</h3>
+<p align="center"></p>
+
+```csharp
+// Transform扩展
+transform
+    .ResetLocal()
+    .SetLocalX(5f)
+    .SetLocalZ(3f);
+    
+// GameObject扩展
+GameObject uiPanel = gameObject
+    .FindOrCreateChild("UI_Panel")
+    .SetLayerRecursively(
+        LayerMask.NameToLayer("UI"));
+    
+// 集合扩展
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5 };
+numbers.Shuffle();
+foreach (var batch in numbers.Batch(2)) {
+    // 批量处理
+}
+```
+</td>
+</tr>
 </table>
 
 ## 🚀 快速开始
@@ -242,6 +314,18 @@ TByd Core Utils 专注于高性能实现，显著提升开发效率的同时保�
 <td>~0.2ms</td>
 <td>🔥 3.5倍</td>
 </tr>
+<tr>
+<td>大量数据分批处理</td>
+<td>~2.1ms</td>
+<td>~0.6ms</td>
+<td>🔥 3.5倍</td>
+</tr>
+<tr>
+<td>异步文件操作</td>
+<td>线程阻塞</td>
+<td>非阻塞</td>
+<td>🔥 主线程零阻塞</td>
+</tr>
 </table>
 
 ## 📚 文档
@@ -260,7 +344,11 @@ TByd Core Utils 专注于高性能实现，显著提升开发效率的同时保�
 - **CoreUtilsShowcase** - 综合功能演示
 - **MathUtilsDemo** - 数学工具演示场景
 - **RandomUtilsDemo** - 随机功能演示场景
-- **ExtensionsDemo** - 扩展方法演示场景
+- **TimeUtilsDemo** - 时间工具演示场景
+- **ReflectionUtilsDemo** - 反射工具演示场景
+- **TransformExtensionsDemo** - Transform扩展方法演示场景
+- **CollectionUtilsDemo** - 集合工具演示场景
+- **IOUtilsDemo** - IO操作工具演示场景
 
 要访问示例，请通过Package Manager导入。
 
@@ -270,7 +358,7 @@ TByd Core Utils 专注于高性能实现，显著提升开发效率的同时保�
 
 ## 🔄 版本信息
 
-当前版本: **0.3.0-preview**
+当前版本: **0.4.0-preview**
 
 查看 [CHANGELOG.md](CHANGELOG.md) 获取详细更新记录。
 
