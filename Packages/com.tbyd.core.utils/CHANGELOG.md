@@ -2,7 +2,45 @@
 
 本文档记录 `TByd.Core.Utils` 包的所有重要变更。
 
-## [0.2.0-preview] - 2025-03-17
+## [0.3.0-preview] - 2025-03-17
+
+### 新增
+- **ReflectionUtils** - 高性能反射工具类
+  - 缓存型反射API，减少性能开销
+  - 类型/成员查找与获取（GetType、GetTypes、GetAllTypes等）
+  - 动态调用方法和属性（InvokeMethod、InvokeStaticMethod）
+  - 通过表达式树生成快速访问器（CreateGetter、CreateSetter）
+  - 强类型转换与类型安全处理（TryConvert、Convert）
+  - 特性操作（GetAttribute、HasAttribute）
+  - 实例创建与初始化（CreateInstance）
+  - AOT兼容的反射替代方案
+
+- **TimeUtils** - 时间处理工具类
+  - 时间格式化与解析（FormatDateTime、FormatTimeSpan、TryParseDateTime）
+  - 相对时间描述（GetRelativeTimeDescription）
+  - 时区处理（LocalToUtc、UtcToLocal、ConvertToTimeZone）
+  - 游戏时间系统（GetCurrentGameTime、SetGameTimeScale、SetGameTimePaused）
+  - 计时器实用工具（StartTimer、StopTimer、MeasureExecutionTime）
+  - 日期计算（GetDaysInMonth、IsLeapYear、GetDaysBetween等）
+  - 工作日计算（AddWorkDays、IsWorkDay）
+  - 性能统计与分析（StartPerformanceMeasure、GeneratePerformanceReport）
+
+### 改进
+- 所有工具类添加了更完善的参数验证和异常处理
+- 优化了RandomUtils类中的随机数生成算法
+- 扩展了StringUtils的功能，添加更多实用方法
+- 完善了单元测试，测试覆盖率提升到90%以上
+- 支持链式调用API，提升代码可读性
+- 减少GC分配，优化性能关键路径
+
+### 文档
+- 添加了反射工具和时间工具的详细API文档
+- 更新了使用示例，提供完整的实际应用场景
+- 改进了性能优化建议和最佳实践文档
+- 扩展了API参考，包含所有公开方法的完整说明
+- 添加了关于潜在性能瓶颈的警告和解决方案
+
+## [0.2.0-preview] - 2024-03-17
 
 ### 新增
 - **RandomUtils** - 增强的随机功能工具类

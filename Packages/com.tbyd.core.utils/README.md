@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![版本](https://img.shields.io/badge/版本-0.2.0--preview-blue)
+![版本](https://img.shields.io/badge/版本-0.3.0--preview-blue)
 ![Unity版本](https://img.shields.io/badge/Unity-2021.3.8f1+-brightgreen)
 ![许可证](https://img.shields.io/badge/许可证-MIT-green)
 ![测试覆盖率](https://img.shields.io/badge/测试覆盖率-95%25-success)
@@ -13,15 +13,15 @@
 
 ## 📋 概述
 
-TByd Core Utils 是一个专为Unity开发者设计的实用工具库，提供常用的数学工具、字符串处理、随机功能和各种扩展方法，帮助开发者专注于游戏逻辑实现，减少编写重复代码的工作。
+TByd Core Utils 是一个专为Unity开发者设计的实用工具库，提供常用的数学工具、字符串处理、随机功能、反射工具、时间工具和各种扩展方法，帮助开发者专注于游戏逻辑实现，减少编写重复代码的工作。
 
 <div align="center">
   
-| 🧮 数学工具 | 📝 字符串工具 | 🎲 随机工具 | 🎮 扩展方法 |
-|:-------------:|:-------------:|:-------------:|:-------------:|
-| 平滑曲线插值 | 多语言文本处理 | 权重随机选择 | 链式变换操作 |
-| 范围值重映射 | 智能字符串生成 | 正态分布随机 | 集合批量处理 |
-| 矢量与旋转转换 | 高效文本解析 | 随机颜色生成 | 安全组件操作 |
+| 🧮 数学工具 | 📝 字符串工具 | 🎲 随机工具 | ⏱️ 时间工具 | 🔍 反射工具 | 🎮 扩展方法 |
+|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|
+| 平滑曲线插值 | 多语言文本处理 | 权重随机选择 | 时间格式化 | 高性能反射 | 链式变换操作 |
+| 范围值重映射 | 智能字符串生成 | 正态分布随机 | 游戏时间系统 | 动态实例化 | 集合批量处理 |
+| 矢量与旋转转换 | 高效文本解析 | 随机颜色生成 | 计时与测量 | 元数据访问 | 安全组件操作 |
 
 </div>
 
@@ -29,7 +29,7 @@ TByd Core Utils 是一个专为Unity开发者设计的实用工具库，提供�
 
 <table>
 <tr>
-<td width="25%">
+<td width="33%">
 <h3 align="center">🧮 MathUtils</h3>
 <p align="center"></p>
 
@@ -52,7 +52,7 @@ bool isInside = MathUtils.IsPointInPolygon(
     playerPosition, polygonVertices);
 ```
 </td>
-<td width="25%">
+<td width="33%">
 <h3 align="center">📝 StringUtils</h3>
 <p align="center"></p>
 
@@ -71,7 +71,7 @@ string preview = StringUtils.Truncate(
     longDescription, 100, "...");
 ```
 </td>
-<td width="25%">
+<td width="33%">
 <h3 align="center">🎲 RandomUtils</h3>
 <p align="center"></p>
 
@@ -91,7 +91,48 @@ string[] names = GetPlayerNames();
 RandomUtils.Shuffle(names);
 ```
 </td>
-<td width="25%">
+</tr>
+<tr>
+<td width="33%">
+<h3 align="center">⏱️ TimeUtils</h3>
+<p align="center"></p>
+
+```csharp
+// 格式化时间
+string formatted = TimeUtils.FormatDateTime(
+    DateTime.Now, "yyyy-MM-dd HH:mm");
+    
+// 相对时间描述
+string relativeTime = TimeUtils.GetRelativeTimeDescription(
+    DateTime.Now.AddDays(-2));
+// 输出: "2天前"
+
+// 游戏时间系统
+TimeUtils.SetGameTimeScale(2.0f);
+TimeUtils.UpdateGameTime();
+DateTime gameTime = TimeUtils.GetCurrentGameTime();
+```
+</td>
+<td width="33%">
+<h3 align="center">🔍 ReflectionUtils</h3>
+<p align="center"></p>
+
+```csharp
+// 高性能反射
+var getter = ReflectionUtils.CreateGetter<Transform, Vector3>(
+    "position");
+var setter = ReflectionUtils.CreateSetter<Transform, Vector3>(
+    "position");
+    
+// 动态实例创建
+var instance = ReflectionUtils.CreateInstance(typeName);
+
+// 元数据访问
+bool hasAttribute = ReflectionUtils.HasAttribute<ObsoleteAttribute>(
+    typeof(LegacyClass));
+```
+</td>
+<td width="33%">
 <h3 align="center">🎮 扩展方法</h3>
 <p align="center"></p>
 
@@ -229,7 +270,7 @@ TByd Core Utils 专注于高性能实现，显著提升开发效率的同时保�
 
 ## 🔄 版本信息
 
-当前版本: **0.2.0-preview**
+当前版本: **0.3.0-preview**
 
 查看 [CHANGELOG.md](CHANGELOG.md) 获取详细更新记录。
 
