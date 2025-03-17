@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![版本](https://img.shields.io/badge/版本-0.1.1--preview-blue)
+![版本](https://img.shields.io/badge/版本-0.2.0--preview-blue)
 ![Unity版本](https://img.shields.io/badge/Unity-2021.3.8f1+-brightgreen)
 ![许可证](https://img.shields.io/badge/许可证-MIT-green)
 ![测试覆盖率](https://img.shields.io/badge/测试覆盖率-95%25-success)
@@ -13,15 +13,15 @@
 
 ## 📋 概述
 
-TByd Core Utils 是一个专为Unity开发者设计的实用工具库，提供常用的数学工具、字符串处理和变换操作扩展，帮助开发者专注于游戏逻辑实现，减少编写重复代码的工作。
+TByd Core Utils 是一个专为Unity开发者设计的实用工具库，提供常用的数学工具、字符串处理、随机功能和各种扩展方法，帮助开发者专注于游戏逻辑实现，减少编写重复代码的工作。
 
 <div align="center">
   
-| 🧮 数学工具 | 📝 字符串工具 | 🎮 变换扩展 |
-|:-------------:|:-------------:|:-------------:|
-| 平滑曲线插值 | 多语言文本处理 | 链式变换操作 |
-| 范围值重映射 | 智能字符串生成 | 深度层级管理 |
-| 矢量与旋转转换 | 高效文本解析 | 递归组件操作 |
+| 🧮 数学工具 | 📝 字符串工具 | 🎲 随机工具 | 🎮 扩展方法 |
+|:-------------:|:-------------:|:-------------:|:-------------:|
+| 平滑曲线插值 | 多语言文本处理 | 权重随机选择 | 链式变换操作 |
+| 范围值重映射 | 智能字符串生成 | 正态分布随机 | 集合批量处理 |
+| 矢量与旋转转换 | 高效文本解析 | 随机颜色生成 | 安全组件操作 |
 
 </div>
 
@@ -29,7 +29,7 @@ TByd Core Utils 是一个专为Unity开发者设计的实用工具库，提供�
 
 <table>
 <tr>
-<td width="33%">
+<td width="25%">
 <h3 align="center">🧮 MathUtils</h3>
 <p align="center"></p>
 
@@ -52,7 +52,7 @@ bool isInside = MathUtils.IsPointInPolygon(
     playerPosition, polygonVertices);
 ```
 </td>
-<td width="33%">
+<td width="25%">
 <h3 align="center">📝 StringUtils</h3>
 <p align="center"></p>
 
@@ -71,24 +71,49 @@ string preview = StringUtils.Truncate(
     longDescription, 100, "...");
 ```
 </td>
-<td width="33%">
-<h3 align="center">🎮 TransformExtensions</h3>
+<td width="25%">
+<h3 align="center">🎲 RandomUtils</h3>
 <p align="center"></p>
 
 ```csharp
-// 链式修改变换
+// 根据权重随机选择
+string fruit = RandomUtils.WeightedRandom(
+    new[] { "苹果", "香蕉", "樱桃" },
+    new[] { 1f, 2f, 3f });
+    
+// 生成正态分布随机值
+float iq = RandomUtils.Gaussian(
+    mean: 100f, 
+    standardDeviation: 15f);
+    
+// 随机打乱数组
+string[] names = GetPlayerNames();
+RandomUtils.Shuffle(names);
+```
+</td>
+<td width="25%">
+<h3 align="center">🎮 扩展方法</h3>
+<p align="center"></p>
+
+```csharp
+// Transform扩展
 transform
     .ResetLocal()
     .SetLocalX(5f)
     .SetLocalZ(3f);
     
-// 查找或创建子对象
-Transform uiPanel = transform
-    .FindOrCreateChild("UI_Panel");
+// GameObject扩展
+GameObject uiPanel = gameObject
+    .FindOrCreateChild("UI_Panel")
+    .SetLayerRecursively(
+        LayerMask.NameToLayer("UI"));
     
-// 递归查找特定对象
-Transform deepChild = transform
-    .FindRecursive("PlayerInventory");
+// 集合扩展
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5 };
+numbers.Shuffle();
+foreach (var batch in numbers.Batch(2)) {
+    // 批量处理
+}
 ```
 </td>
 </tr>
@@ -129,9 +154,14 @@ public class MyScript : MonoBehaviour
         // 使用StringUtils
         string uniqueId = StringUtils.GenerateRandom(8);
         
-        // 使用TransformExtensions
+        // 使用RandomUtils
+        Color randomColor = RandomUtils.ColorHSV(0.7f, 1f, 0.7f, 1f);
+        
+        // 使用扩展方法
         transform.ResetLocal().SetLocalY(1.5f);
-        Transform child = transform.FindOrCreateChild("UI_Container");
+        GameObject child = gameObject.FindOrCreateChild("UI_Container");
+        List<int> numbers = new List<int> { 1, 2, 3, 4, 5 };
+        int randomNumber = numbers.GetRandom();
     }
 }
 ```
@@ -165,6 +195,12 @@ TByd Core Utils 专注于高性能实现，显著提升开发效率的同时保�
 <td>~0.15ms</td>
 <td>🔥 3.3倍</td>
 </tr>
+<tr>
+<td>集合随机打乱</td>
+<td>~0.7ms</td>
+<td>~0.2ms</td>
+<td>🔥 3.5倍</td>
+</tr>
 </table>
 
 ## 📚 文档
@@ -182,7 +218,8 @@ TByd Core Utils 专注于高性能实现，显著提升开发效率的同时保�
 
 - **CoreUtilsShowcase** - 综合功能演示
 - **MathUtilsDemo** - 数学工具演示场景
-- **TransformExtensionsDemo** - 变换操作演示场景
+- **RandomUtilsDemo** - 随机功能演示场景
+- **ExtensionsDemo** - 扩展方法演示场景
 
 要访问示例，请通过Package Manager导入。
 
@@ -192,7 +229,7 @@ TByd Core Utils 专注于高性能实现，显著提升开发效率的同时保�
 
 ## 🔄 版本信息
 
-当前版本: **0.1.1-preview**
+当前版本: **0.2.0-preview**
 
 查看 [CHANGELOG.md](CHANGELOG.md) 获取详细更新记录。
 
