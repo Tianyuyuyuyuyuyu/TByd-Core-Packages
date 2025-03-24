@@ -41,6 +41,12 @@ namespace TByd.Core.Utils.Runtime
         /// </remarks>
         public static bool Bool(float trueChance = 0.5f)
         {
+            if (trueChance < 0f)
+                throw new ArgumentException("概率值不能小于0", nameof(trueChance));
+            
+            if (trueChance > 1f)
+                throw new ArgumentException("概率值不能大于1", nameof(trueChance));
+            
             if (trueChance <= 0f)
                 return false;
             
@@ -120,6 +126,7 @@ namespace TByd.Core.Utils.Runtime
         /// <param name="mean">均值，默认为0</param>
         /// <param name="standardDeviation">标准差，默认为1</param>
         /// <returns>符合正态分布的随机值</returns>
+        /// <exception cref="ArgumentException">当standardDeviation为负值时抛出</exception>
         /// <remarks>
         /// 此方法使用Box-Muller变换生成符合正态分布的随机值。
         /// 
@@ -131,6 +138,9 @@ namespace TByd.Core.Utils.Runtime
         /// </remarks>
         public static float Gaussian(float mean = 0f, float standardDeviation = 1f)
         {
+            if (standardDeviation < 0f)
+                throw new ArgumentException("标准差不能为负值", nameof(standardDeviation));
+                
             lock (_lock)
             {
                 float u1 = 1.0f - (float)_random.NextDouble();
@@ -163,6 +173,26 @@ namespace TByd.Core.Utils.Runtime
         public static Color ColorHSV(float saturationMin = 0f, float saturationMax = 1f,
                                     float valueMin = 0f, float valueMax = 1f)
         {
+            // 验证参数范围
+            if (saturationMin < 0f)
+                throw new ArgumentException("最小饱和度不能小于0", nameof(saturationMin));
+            
+            if (saturationMax > 1f)
+                throw new ArgumentException("最大饱和度不能大于1", nameof(saturationMax));
+            
+            if (valueMin < 0f)
+                throw new ArgumentException("最小明度不能小于0", nameof(valueMin));
+            
+            if (valueMax > 1f)
+                throw new ArgumentException("最大明度不能大于1", nameof(valueMax));
+            
+            // 验证最小值不大于最大值
+            if (saturationMin > saturationMax)
+                throw new ArgumentException("最小饱和度不能大于最大饱和度", nameof(saturationMin));
+            
+            if (valueMin > valueMax)
+                throw new ArgumentException("最小明度不能大于最大明度", nameof(valueMin));
+            
             float h = UnityEngine.Random.value;
             float s = UnityEngine.Random.Range(saturationMin, saturationMax);
             float v = UnityEngine.Random.Range(valueMin, valueMax);
@@ -176,6 +206,7 @@ namespace TByd.Core.Utils.Runtime
         /// <param name="length">ID长度</param>
         /// <param name="includeSpecialChars">是否包含特殊字符</param>
         /// <returns>随机生成的ID</returns>
+        /// <exception cref="ArgumentException">当length为负值时抛出</exception>
         /// <remarks>
         /// 此方法生成指定长度的随机字符串ID，可以选择是否包含特殊字符。
         /// 
@@ -187,7 +218,15 @@ namespace TByd.Core.Utils.Runtime
         /// </remarks>
         public static string GenerateId(int length, bool includeSpecialChars = false)
         {
-            return StringUtils.GenerateRandom(length, includeSpecialChars);
+            if (length < 0)
+                throw new ArgumentException("ID长度不能为负值", nameof(length));
+                
+            // 根据includeSpecialChars参数选择合适的字符集
+            string allowedChars = includeSpecialChars
+                ? StringUtils.AlphanumericAndSpecialChars
+                : StringUtils.AlphanumericChars;
+                
+            return StringUtils.GenerateRandom(length, allowedChars);
         }
 
         /// <summary>

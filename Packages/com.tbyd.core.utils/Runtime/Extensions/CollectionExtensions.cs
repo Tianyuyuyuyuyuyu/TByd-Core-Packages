@@ -177,13 +177,7 @@ namespace TByd.Core.Utils.Runtime.Extensions
         /// </remarks>
         public static T GetRandom<T>(this IList<T> list)
         {
-            if (list == null || list.Count == 0)
-            {
-                throw new ArgumentException("集合不能为空", nameof(list));
-            }
-            
-            int randomIndex = UnityEngine.Random.Range(0, list.Count);
-            return list[randomIndex];
+            return CollectionUtils.GetRandomElement(list);
         }
 
         /// <summary>

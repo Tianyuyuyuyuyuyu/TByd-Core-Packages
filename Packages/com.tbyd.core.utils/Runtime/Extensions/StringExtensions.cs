@@ -1,6 +1,8 @@
 using System;
 using System.Text;
 using UnityEngine;
+using System.Buffers;
+using UnityEngine.Pool;
 
 namespace TByd.Core.Utils.Runtime.Extensions
 {
@@ -13,6 +15,17 @@ namespace TByd.Core.Utils.Runtime.Extensions
     /// </remarks>
     public static class StringExtensions
     {
+        // StringBuilder对象池，使用Unity原生对象池
+        private static readonly ObjectPool<StringBuilder> StringBuilderPool = new ObjectPool<StringBuilder>(
+            createFunc: () => new StringBuilder(256),
+            actionOnGet: sb => sb.Clear(),
+            actionOnRelease: sb => sb.Clear(),
+            actionOnDestroy: null,
+            collectionCheck: false,
+            defaultCapacity: 16,
+            maxSize: 32
+        );
+
         /// <summary>
         /// 检查字符串是否为空或仅包含空白字符
         /// </summary>
@@ -124,33 +137,51 @@ namespace TByd.Core.Utils.Runtime.Extensions
                 // 处理Unity类型
                 if (type == typeof(Vector2))
                 {
-                    if (str.StartsWith("(") && str.EndsWith(")"))
+                    ReadOnlySpan<char> span = str.AsSpan();
+                    if (span.Length > 0 && span[0] == '(' && span[span.Length - 1] == ')')
                     {
-                        str = str.Substring(1, str.Length - 2);
+                        span = span.Slice(1, span.Length - 2);
                     }
                     
-                    string[] parts = str.Split(',');
-                    if (parts.Length >= 2)
+                    int commaIndex = span.IndexOf(',');
+                    if (commaIndex > 0)
                     {
-                        float x = float.Parse(parts[0].Trim());
-                        float y = float.Parse(parts[1].Trim());
-                        return (T)(object)new Vector2(x, y);
+                        ReadOnlySpan<char> xSpan = span.Slice(0, commaIndex).Trim();
+                        ReadOnlySpan<char> ySpan = span.Slice(commaIndex + 1).Trim();
+                        
+                        if (float.TryParse(xSpan, out float x) && float.TryParse(ySpan, out float y))
+                        {
+                            return (T)(object)new Vector2(x, y);
+                        }
                     }
                 }
                 if (type == typeof(Vector3))
                 {
-                    if (str.StartsWith("(") && str.EndsWith(")"))
+                    ReadOnlySpan<char> span = str.AsSpan();
+                    if (span.Length > 0 && span[0] == '(' && span[span.Length - 1] == ')')
                     {
-                        str = str.Substring(1, str.Length - 2);
+                        span = span.Slice(1, span.Length - 2);
                     }
                     
-                    string[] parts = str.Split(',');
-                    if (parts.Length >= 3)
+                    int firstCommaIndex = span.IndexOf(',');
+                    if (firstCommaIndex > 0)
                     {
-                        float x = float.Parse(parts[0].Trim());
-                        float y = float.Parse(parts[1].Trim());
-                        float z = float.Parse(parts[2].Trim());
-                        return (T)(object)new Vector3(x, y, z);
+                        ReadOnlySpan<char> xSpan = span.Slice(0, firstCommaIndex).Trim();
+                        ReadOnlySpan<char> restSpan = span.Slice(firstCommaIndex + 1);
+                        
+                        int secondCommaIndex = restSpan.IndexOf(',');
+                        if (secondCommaIndex > 0)
+                        {
+                            ReadOnlySpan<char> ySpan = restSpan.Slice(0, secondCommaIndex).Trim();
+                            ReadOnlySpan<char> zSpan = restSpan.Slice(secondCommaIndex + 1).Trim();
+                            
+                            if (float.TryParse(xSpan, out float x) && 
+                                float.TryParse(ySpan, out float y) && 
+                                float.TryParse(zSpan, out float z))
+                            {
+                                return (T)(object)new Vector3(x, y, z);
+                            }
+                        }
                     }
                 }
                 if (type == typeof(Color))
@@ -165,15 +196,35 @@ namespace TByd.Core.Utils.Runtime.Extensions
                     }
                     else if (str.StartsWith("RGBA(") && str.EndsWith(")"))
                     {
-                        str = str.Substring(5, str.Length - 6);
-                        string[] parts = str.Split(',');
-                        if (parts.Length >= 4)
+                        ReadOnlySpan<char> span = str.AsSpan().Slice(5, str.Length - 6);
+                        
+                        int commaCount = 0;
+                        int lastCommaIndex = -1;
+                        int[] commaIndices = new int[3]; // 最多3个逗号
+                        
+                        for (int i = 0; i < span.Length && commaCount < 3; i++)
                         {
-                            float r = float.Parse(parts[0].Trim()) / 255f;
-                            float g = float.Parse(parts[1].Trim()) / 255f;
-                            float b = float.Parse(parts[2].Trim()) / 255f;
-                            float a = float.Parse(parts[3].Trim());
-                            return (T)(object)new Color(r, g, b, a);
+                            if (span[i] == ',')
+                            {
+                                commaIndices[commaCount++] = i;
+                                lastCommaIndex = i;
+                            }
+                        }
+                        
+                        if (commaCount == 3 && lastCommaIndex > 0)
+                        {
+                            ReadOnlySpan<char> rSpan = span.Slice(0, commaIndices[0]).Trim();
+                            ReadOnlySpan<char> gSpan = span.Slice(commaIndices[0] + 1, commaIndices[1] - commaIndices[0] - 1).Trim();
+                            ReadOnlySpan<char> bSpan = span.Slice(commaIndices[1] + 1, commaIndices[2] - commaIndices[1] - 1).Trim();
+                            ReadOnlySpan<char> aSpan = span.Slice(commaIndices[2] + 1).Trim();
+                            
+                            if (float.TryParse(rSpan, out float r) && 
+                                float.TryParse(gSpan, out float g) && 
+                                float.TryParse(bSpan, out float b) && 
+                                float.TryParse(aSpan, out float a))
+                            {
+                                return (T)(object)new Color(r / 255f, g / 255f, b / 255f, a);
+                            }
                         }
                     }
                 }
@@ -214,13 +265,23 @@ namespace TByd.Core.Utils.Runtime.Extensions
                 return str;
             }
             
-            StringBuilder sb = new StringBuilder(str.Length * count);
-            for (int i = 0; i < count; i++)
+            // 从对象池获取StringBuilder
+            StringBuilder sb = StringBuilderPool.Get();
+            try
             {
-                sb.Append(str);
+                sb.EnsureCapacity(str.Length * count);
+                for (int i = 0; i < count; i++)
+                {
+                    sb.Append(str);
+                }
+                
+                return sb.ToString();
             }
-            
-            return sb.ToString();
+            finally
+            {
+                // 返回StringBuilder到对象池
+                StringBuilderPool.Release(sb);
+            }
         }
 
         /// <summary>
@@ -244,47 +305,60 @@ namespace TByd.Core.Utils.Runtime.Extensions
                 return str;
             }
             
-            char[] chars = str.ToCharArray();
-            Array.Reverse(chars);
-            return new string(chars);
+            // 对于短字符串，使用栈分配以避免堆分配
+            if (str.Length <= 128)
+            {
+                Span<char> chars = stackalloc char[str.Length];
+                str.AsSpan().CopyTo(chars);
+                chars.Reverse();
+                return new string(chars);
+            }
+            
+            // 对于长字符串，使用ArrayPool
+            char[] rentedArray = ArrayPool<char>.Shared.Rent(str.Length);
+            try
+            {
+                str.CopyTo(0, rentedArray, 0, str.Length);
+                Array.Reverse(rentedArray, 0, str.Length);
+                return new string(rentedArray, 0, str.Length);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(rentedArray);
+            }
         }
 
         /// <summary>
-        /// 检查字符串是否包含另一个字符串（忽略大小写）
+        /// 检查字符串是否包含另一个字符串，忽略大小写
         /// </summary>
         /// <param name="str">源字符串</param>
-        /// <param name="value">要查找的字符串</param>
+        /// <param name="value">要查找的子字符串</param>
         /// <returns>如果包含则返回true，否则返回false</returns>
         /// <remarks>
-        /// 此方法检查字符串是否包含另一个字符串，忽略大小写。
+        /// 此方法是对StringUtils.ContainsIgnoreCase的扩展方法包装。
         /// 
         /// <para>示例：</para>
         /// <code>
         /// string text = "Hello World";
-        /// bool contains = text.ContainsIgnoreCase("world"); // 返回 true
+        /// bool contains = text.ContainsIgnoreCase("hello"); // 返回 true
         /// </code>
         /// </remarks>
         public static bool ContainsIgnoreCase(this string str, string value)
         {
-            if (string.IsNullOrEmpty(str) || string.IsNullOrEmpty(value))
-            {
-                return false;
-            }
-            
-            return str.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0;
+            return StringUtils.ContainsIgnoreCase(str, value);
         }
 
         /// <summary>
-        /// 将字符串转换为驼峰命名法
+        /// 将字符串转换为驼峰命名法(camelCase)
         /// </summary>
         /// <param name="str">要转换的字符串</param>
-        /// <returns>驼峰命名法格式的字符串</returns>
+        /// <returns>转换后的驼峰命名法字符串</returns>
         /// <remarks>
-        /// 此方法将字符串转换为驼峰命名法格式（首字母小写，后续单词首字母大写）。
+        /// 此方法将字符串转换为驼峰命名法，即第一个单词首字母小写，其余单词首字母大写。
         /// 
         /// <para>示例：</para>
         /// <code>
-        /// string text = "hello world";
+        /// string text = "Hello World";
         /// string camelCase = text.ToCamelCase(); // 返回 "helloWorld"
         /// </code>
         /// </remarks>
@@ -295,35 +369,51 @@ namespace TByd.Core.Utils.Runtime.Extensions
                 return string.Empty;
             }
             
-            string[] words = str.Split(new[] { ' ', '_', '-' }, StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length == 0)
+            if (str.Length == 1)
             {
-                return string.Empty;
+                return str.ToLowerInvariant();
             }
             
-            StringBuilder sb = new StringBuilder(str.Length);
-            
-            // 第一个单词首字母小写
-            sb.Append(char.ToLowerInvariant(words[0][0]));
-            if (words[0].Length > 1)
+            // 从对象池获取StringBuilder
+            StringBuilder sb = StringBuilderPool.Get();
+            try
             {
-                sb.Append(words[0].Substring(1));
-            }
-            
-            // 后续单词首字母大写
-            for (int i = 1; i < words.Length; i++)
-            {
-                if (!string.IsNullOrEmpty(words[i]))
+                sb.EnsureCapacity(str.Length);
+                
+                bool capitalizeNext = false;
+                bool isFirstChar = true;
+                
+                foreach (char c in str)
                 {
-                    sb.Append(char.ToUpperInvariant(words[i][0]));
-                    if (words[i].Length > 1)
+                    if (char.IsWhiteSpace(c) || c == '_' || c == '-')
                     {
-                        sb.Append(words[i].Substring(1));
+                        capitalizeNext = true;
+                        continue;
+                    }
+                    
+                    if (capitalizeNext)
+                    {
+                        sb.Append(char.ToUpperInvariant(c));
+                        capitalizeNext = false;
+                    }
+                    else if (isFirstChar)
+                    {
+                        sb.Append(char.ToLowerInvariant(c));
+                        isFirstChar = false;
+                    }
+                    else
+                    {
+                        sb.Append(c);
                     }
                 }
+                
+                return sb.ToString();
             }
-            
-            return sb.ToString();
+            finally
+            {
+                // 返回StringBuilder到对象池
+                StringBuilderPool.Release(sb);
+            }
         }
     }
 } 

@@ -1,0 +1,26 @@
+# 测试文件排除
+Tests/
+Tests.meta
+
+# 编辑器和项目配置
+.DS_Store
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.sln
+
+# 文档和示例源文件（Documentation~和Samples~会自动排除）
+README.md.meta
+CHANGELOG.md.meta
+LICENSE.md.meta
+
+# 开发相关
+.npmrc
+.npmrc.meta
+.npmignore.meta
+
+# 临时文件
+*.log
+*.tmp
+*.temp 

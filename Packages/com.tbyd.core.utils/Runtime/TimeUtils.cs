@@ -65,15 +65,28 @@ namespace TByd.Core.Utils.Runtime
         /// 将时间跨度格式化为简洁的字符串
         /// </summary>
         /// <param name="timeSpan">时间跨度</param>
-        /// <returns>简洁格式的时间字符串，如"02:30:15"</returns>
+        /// <returns>简洁格式的时间字符串，如"02:30:15"或负时间"-02:30:15"</returns>
         public static string FormatTimeSpanCompact(TimeSpan timeSpan)
         {
-            if (timeSpan.TotalDays >= 1)
+            // 处理负时间跨度
+            bool isNegative = timeSpan.TotalMilliseconds < 0;
+            if (isNegative)
             {
-                return $"{(int)timeSpan.TotalDays}:{timeSpan.Hours:D2}:{timeSpan.Minutes:D2}:{timeSpan.Seconds:D2}";
+                timeSpan = timeSpan.Negate(); // 使用正值进行格式化
             }
             
-            return $"{(int)timeSpan.TotalHours:D2}:{timeSpan.Minutes:D2}:{timeSpan.Seconds:D2}";
+            string result;
+            if (timeSpan.TotalDays >= 1)
+            {
+                result = $"{(int)timeSpan.TotalDays}:{timeSpan.Hours:D2}:{timeSpan.Minutes:D2}:{timeSpan.Seconds:D2}";
+            }
+            else
+            {
+                result = $"{(int)timeSpan.TotalHours:D2}:{timeSpan.Minutes:D2}:{timeSpan.Seconds:D2}";
+            }
+            
+            // 如果是负时间，添加负号
+            return isNegative ? "-" + result : result;
         }
         
         /// <summary>

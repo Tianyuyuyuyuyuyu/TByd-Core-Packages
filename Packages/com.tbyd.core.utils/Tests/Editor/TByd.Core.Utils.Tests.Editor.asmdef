@@ -1,0 +1,32 @@
+{
+    "name": "TByd.Core.Utils.Tests.Editor",
+    "rootNamespace": "",
+    "references": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "TByd.Core.Utils.Runtime",
+        "TByd.Core.Utils.Editor",
+        "Unity.PerformanceTesting"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.test-framework.performance",
+            "expression": "1.0.0",
+            "define": "UNITY_PERFORMANCE_TESTS"
+        }
+    ],
+    "noEngineReferences": false
+}

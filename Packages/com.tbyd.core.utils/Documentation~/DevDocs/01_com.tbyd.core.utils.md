@@ -45,7 +45,6 @@ com.tbyd.core.utils/
 │   ├── TimeUtils.cs
 │   ├── RandomUtils.cs
 │   ├── FileUtils.cs
-│   ├── ValidationUtils.cs
 │   ├── Extensions/
 │   │   ├── TransformExtensions.cs
 │   │   ├── GameObjectExtensions.cs
@@ -60,10 +59,21 @@ com.tbyd.core.utils/
 │   └── PropertyDrawers/
 │       ├── ReadOnlyPropertyDrawer.cs
 │       └── ConditionalFieldDrawer.cs
-└── Tests/
-    ├── StringUtilsTests.cs
-    ├── MathUtilsTests.cs
-    └── ... (其他测试文件)
+├── Tests/
+│   ├── Editor/                    # 编辑器模式测试
+│   │   ├── Unit/                  # 单元测试
+│   │   ├── Integration/           # 集成测试
+│   │   └── Performance/           # 编辑器性能测试
+│   ├── Runtime/                   # 运行时测试
+│   │   ├── Unit/                  # 运行时单元测试
+│   │   ├── Integration/           # 运行时集成测试
+│   │   └── Performance/           # 运行时性能测试
+│   ├── Compatibility/             # 兼容性测试
+│   │   ├── UnityVersions/         # Unity版本兼容性测试
+│   │   └── Platforms/             # 平台兼容性测试
+│   ├── Stress/                    # 压力测试
+│   └── Coverage/                  # 覆盖率报告
+└── TestResources/             # 测试资源
 ```
 
 ### 2. 类设计

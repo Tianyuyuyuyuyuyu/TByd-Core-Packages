@@ -240,12 +240,14 @@ namespace TByd.Core.Utils.Runtime
                 toMax = temp;
             }
             
-            // 处理边界情况
+            // 处理边界情况（移除这些检查，允许外推）
+            /*
             if (value <= Mathf.Min(fromMin, fromMax))
                 return fromRangeInverted == toRangeInverted ? toMin : toMax;
             
             if (value >= Mathf.Max(fromMin, fromMax))
                 return fromRangeInverted == toRangeInverted ? toMax : toMin;
+            */
             
             // 标准化值到 0-1 范围
             float normalizedValue = (value - fromMin) / (fromMax - fromMin);
@@ -293,7 +295,7 @@ namespace TByd.Core.Utils.Runtime
             // 快速路径：处理零向量
             float sqrMagnitude = direction.sqrMagnitude;
             if (sqrMagnitude < 1e-8f)
-                return Quaternion.identity;
+                throw new ArgumentException("方向向量不能为零", nameof(direction));
                 
             // 快速路径：常见方向检查
             if (Vector3.SqrMagnitude(direction - Vector3.forward) < 1e-8f)
